@@ -17,13 +17,11 @@ import torchvision.transforms as tt
 
 class block(nn.Module):
     def __init__(
-        self, in_channels, intermediate_channels, identity_downsample=None, stride=1
-    ):
+        self, in_channels, intermediate_channels, identity_downsample=None, stride=1):
         super(block, self).__init__()
         self.expansion = 4
         self.conv1 = nn.Conv2d(
-            in_channels, intermediate_channels, kernel_size=1, stride=1, padding=0, bias=False
-        )
+            in_channels, intermediate_channels, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn1 = nn.BatchNorm2d(intermediate_channels)
         self.conv2 = nn.Conv2d(
             intermediate_channels,
@@ -31,8 +29,7 @@ class block(nn.Module):
             kernel_size=3,
             stride=stride,
             padding=1,
-            bias=False
-        )
+            bias=False)
         self.bn2 = nn.BatchNorm2d(intermediate_channels)
         self.conv3 = nn.Conv2d(
             intermediate_channels,
@@ -40,8 +37,7 @@ class block(nn.Module):
             kernel_size=1,
             stride=1,
             padding=0,
-            bias=False
-        )
+            bias=False)
         self.bn3 = nn.BatchNorm2d(intermediate_channels * self.expansion)
         self.relu = nn.ReLU()
         self.identity_downsample = identity_downsample
@@ -76,19 +72,15 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        # Essentially the entire ResNet architecture are in these 4 lines below
+        # Essential ResNet architecture
         self.layer1 = self._make_layer(
-            block, layers[0], intermediate_channels=64, stride=1
-        )
+            block, layers[0], intermediate_channels=64, stride=1)
         self.layer2 = self._make_layer(
-            block, layers[1], intermediate_channels=128, stride=2
-        )
+            block, layers[1], intermediate_channels=128, stride=2)
         self.layer3 = self._make_layer(
-            block, layers[2], intermediate_channels=256, stride=2
-        )
+            block, layers[2], intermediate_channels=256, stride=2)
         self.layer4 = self._make_layer(
-            block, layers[3], intermediate_channels=512, stride=2
-        )
+            block, layers[3], intermediate_channels=512, stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * 4, num_classes)
@@ -112,10 +104,9 @@ class ResNet(nn.Module):
     def _make_layer(self, block, num_residual_blocks, intermediate_channels, stride):
         identity_downsample = None
         layers = []
-
-        # Either if we half the input space for ex, 56x56 -> 28x28 (stride=2), or channels changes
-        # we need to adapt the Identity (skip connection) so it will be able to be added
-        # to the layer that's ahead
+        """To half the input space for ex, 56x56 -> 28x28 (stride=2), or channels changes
+        we need to adapt the Identity (skip connection) so it will be able to be added
+        to the layer that's ahead"""
         if stride != 1 or self.in_channels != intermediate_channels * 4:
             identity_downsample = nn.Sequential(
                 nn.Conv2d(
@@ -123,16 +114,13 @@ class ResNet(nn.Module):
                     intermediate_channels * 4,
                     kernel_size=1,
                     stride=stride,
-                    bias=False
-                ),
-                nn.BatchNorm2d(intermediate_channels * 4),
-            )
+                    bias=False),
+                nn.BatchNorm2d(intermediate_channels * 4))
 
         layers.append(
-            block(self.in_channels, intermediate_channels, identity_downsample, stride)
-        )
+            block(self.in_channels, intermediate_channels, identity_downsample, stride))
 
-        # The expansion size is always 4 for ResNet 50,101,152
+        # The expansion size is always 4
         self.in_channels = intermediate_channels * 4
 
         # For example for first resnet layer: 256 will be mapped to 64 as intermediate layer,
@@ -208,20 +196,3 @@ check_accuracy(val_dl, model)
 check_accuracy(train_dl, model)
 
 torch.save(model.state_dict, 'ResNet50_CIFAR100.pth')
-
-def ResNet50(img_channel=3, num_classes=1000):
-    return ResNet(block, [3, 4, 6, 3], img_channel, num_classes)
-
-
-def ResNet101(img_channel=3, num_classes=1000):
-    return ResNet(block, [3, 4, 23, 3], img_channel, num_classes)
-
-
-def ResNet152(img_channel=3, num_classes=1000):
-    return ResNet(block, [3, 8, 36, 3], img_channel, num_classes)
-
-
-def test():
-    net = ResNet101(img_channel=3, num_classes=1000)
-    y = net(torch.randn(4, 3, 224, 224)).to("cuda")
-    print(y.size())
